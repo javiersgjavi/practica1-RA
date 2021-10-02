@@ -13,6 +13,17 @@ import time
 # import cv2 as cv
 # import numpy as np
 import sim
+import numpy as np
+import skfuzzy as fuzz
+from skfuzzy import control as ctrl
+import matplotlib.pyplot as plt
+plt.show(block=True)
+
+#--------------------------------------------------------------------------
+##CREATING VARIABLES FOR THE FUZZY INTERVARLS
+ballDesp=None
+turnL=None
+turnR=None
 
 # --------------------------------------------------------------------------
 
@@ -78,6 +89,35 @@ def getSonar(clientID, hRobot):
 
 # --------------------------------------------------------------------------
 
+def startFuzzy():
+    ballDesp=ctrl.Antecedent(np.arange(-1.0, 0.1, 0.1), 'ballDesp')
+    turnL=ctrl.Consequent(np.arange(-1.0, 1.1, 0.1), 'turnL')
+    turnR=ctrl.Consequent(np.arange(-1.0, 1.1, 0.1), 'turnR')
+
+    ballDesp['left']=fuzz.trapmf(ballDesp.universe, [-1.0, -1.0, -0.8, -0.5])
+    ballDesp['center']=fuzz.trimf(ballDesp.universe, [-0.65, -0.5, -0.35])
+    ballDesp['right']=fuzz.trapmf(ballDesp.universe, [-0.5, -0.2, 0.0, 0.0])
+
+    turnL['backward']=fuzz.trapmf(turnL.universe, [-1.0, -1.0, -0.8, 0.0])
+    turnL['static']= fuzz.trimf(turnL.universe, [-0.2, 0.0, 0.1])
+    turnL['forward']= fuzz.trapmf(turnL.universe, [0.0, 0.8, 1.0, 1.0])
+
+    turnR['backward']=fuzz.trapmf(turnR.universe, [-1.0, -1.0, -0.8, 0.0])
+    turnR['static']= fuzz.trimf(turnR.universe, [-0.2, 0.0, 0.1])
+    turnR['forward']= fuzz.trapmf(turnR.universe, [0.0, 0.8, 1.0, 1.0])
+
+    rule1= ctrl.Rule(ballDesp['right'], (turnR['forward'], turnL['static']))
+    rule2= ctrl.Rule(ballDesp['left'], (turnR['static'], turnL['forward']))
+    rule3= ctrl.Rule(ballDesp['center'], (turnR['forward'], turnL['forward']))
+
+    turnCtrl= ctrl.ControlSystem([rule1, rule2, rule3])
+
+    turn= ctrl.ControlSystemSimulation(turnCtrl)
+    return turn
+
+
+# --------------------------------------------------------------------------
+
 def getImageBlob(clientID, hRobot):
     rc,ds,pk = sim.simxReadVisionSensor(clientID, hRobot[2],
                                          sim.simx_opmode_buffer)
@@ -102,11 +142,25 @@ def avoid(sonar):
     elif sonar[5] < 0.2:
         lspeed, rspeed = -1, +1
     else:
-        lspeed, rspeed = +2.0, +2.0
+        lspeed, rspeed = +0.0, +0.0
 
     return lspeed, rspeed
 
 # --------------------------------------------------------------------------
+
+#-----------------------------------------------------------------------------
+
+def seguirBola(coord, turn):
+    lspeed, rspeed=0.8, 0
+    if(len(coord)>0):
+        turn.input['ballDesp']=-coord[0]
+        turn.compute()
+        out=turn.output
+        lspeed=out['turnL']
+        rspeed=out['turnR']
+    return lspeed, rspeed
+
+#---------------------------------------------------------------------------
 
 def main():
     print('### Program started')
@@ -126,17 +180,22 @@ def main():
         print('### Connected to remote API server')
         hRobot = getRobotHandles(clientID)
 
+        turn=startFuzzy()
+
         while sim.simxGetConnectionId(clientID) != -1:
             # Perception
             sonar = getSonar(clientID, hRobot)
             # print '### s', sonar
 
             blobs, coord = getImageBlob(clientID, hRobot)
-            print('###  ', blobs, coord)
+
+            print('coord: ', coord)
 
             # Planning
-            lspeed, rspeed = avoid(sonar)
-
+            ##lspeed, rspeed = avoid(sonar)
+            lspeed, rspeed = seguirBola(coord, turn)
+            print('lspeed: ', lspeed)
+            print('rspeed: ', rspeed)
             # Action
             setSpeed(clientID, hRobot, lspeed, rspeed)
             time.sleep(0.1)

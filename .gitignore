@@ -1,3 +1,6 @@
+# Escena para evitar tener que cambiar el path
+muia-2021.ttt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
