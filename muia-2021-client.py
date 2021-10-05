@@ -142,7 +142,7 @@ def avoid(sonar):
     elif sonar[5] < 0.2:
         lspeed, rspeed = -1, +1
     else:
-        lspeed, rspeed = +0.0, +0.0
+        lspeed, rspeed = +2.0, +2.0
 
     return lspeed, rspeed
 
@@ -150,14 +150,21 @@ def avoid(sonar):
 
 #-----------------------------------------------------------------------------
 
-def seguirBola(coord, turn):
+def isCloseToObstacle(sonar):
+    if (sonar[1] < 0.2) or (sonar[5] < 0.2):
+        return True
+    return False
+
+def seguirBola(coord, turn, sonar):
     lspeed, rspeed=0.8, 0
-    if(len(coord)>0):
+    if(len(coord)>0) and (not isCloseToObstacle(sonar)):
         turn.input['ballDesp']=-coord[0]
         turn.compute()
         out=turn.output
         lspeed=out['turnL']
         rspeed=out['turnR']
+    else:
+        lspeed, rspeed = avoid(sonar)
     return lspeed, rspeed
 
 #---------------------------------------------------------------------------
@@ -193,7 +200,7 @@ def main():
 
             # Planning
             ##lspeed, rspeed = avoid(sonar)
-            lspeed, rspeed = seguirBola(coord, turn)
+            lspeed, rspeed = seguirBola(coord, turn, sonar)
             print('lspeed: ', lspeed)
             print('rspeed: ', rspeed)
             # Action
