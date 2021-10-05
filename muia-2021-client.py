@@ -10,7 +10,7 @@ import math
 import sys
 import time
 
-# import cv2 as cv
+import cv2 as cv
 # import numpy as np
 import sim
 import numpy as np
@@ -121,6 +121,21 @@ def startFuzzy():
 def getImageBlob(clientID, hRobot):
     rc,ds,pk = sim.simxReadVisionSensor(clientID, hRobot[2],
                                          sim.simx_opmode_buffer)
+    rc1, res, image=sim.simxGetVisionSensorImage(clientID, hRobot[2],
+                                                0, sim.simx_opmode_buffer)
+
+    #image=np.reshape(np.array(image), res)
+
+    if(rc1 ==sim.simx_return_ok):
+        image=np.asarray(image)%255
+        image=np.uint8(np.reshape(image, (256, 256, 3)))
+        imageG=cv.cvtColor(image, cv.COLOR_RGB2GRAY)
+        ret, imageG = cv.threshold(imageG, 1, 255, cv.THRESH_BINARY)
+        contours, h=cv.findContours(imageG, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        area=cv.contourArea(contours[0])
+        cv.drawContours(image, contours, -1, (0, 100, 0), 3)
+        cv.imshow('im', image)
+        cv.waitKey(35)
     blobs = 0
     coord = []
     if rc == sim.simx_return_ok and pk[1][0]:
@@ -130,7 +145,7 @@ def getImageBlob(clientID, hRobot):
             coord.append(pk[1][4+offset*i])
             coord.append(pk[1][5+offset*i])
 
-    return blobs, coord
+    return blobs, coord, area
 
 # --------------------------------------------------------------------------
 
@@ -187,7 +202,7 @@ def main():
             sonar = getSonar(clientID, hRobot)
             # print '### s', sonar
 
-            blobs, coord = getImageBlob(clientID, hRobot)
+            blobs, coord, area = getImageBlob(clientID, hRobot)
 
             print('coord: ', coord)
 
@@ -197,7 +212,7 @@ def main():
             print('lspeed: ', lspeed)
             print('rspeed: ', rspeed)
             # Action
-            setSpeed(clientID, hRobot, lspeed, rspeed)
+            setSpeed(clientID, hRobot, 0, 0)
             time.sleep(0.1)
 
         print('### Finishing...')
