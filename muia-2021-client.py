@@ -202,7 +202,7 @@ def seguirBola(coord, turn, area):
     lspeed, rspeed=0.4, -0.4
     if(len(coord)>0 and area>0):
         turn.input['ballDesp']=-coord[0]
-        turn.input['ballDist']=-0.5 # <- cambiar por variable area
+        turn.input['ballDist']=-0.5 # <- cambiar por la variable area
         turn.compute()
         out=turn.output
 
