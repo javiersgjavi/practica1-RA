@@ -9,10 +9,8 @@ print('### Script:', __file__)
 import math
 import sys
 import time
-
-import cv2 as cv
-# import numpy as np
 import sim
+import cv2 as cv
 import numpy as np
 import skfuzzy as fuzz
 from skfuzzy import control as ctrl
@@ -27,7 +25,7 @@ turnR=None
 
 # --------------------------------------------------------------------------
 
-def getRobotHandles(clientID):
+def  getRobotHandles(clientID):
     # Motor handles
     _,lmh = sim.simxGetObjectHandle(clientID, 'Pioneer_p3dx_leftMotor',
                                      sim.simx_opmode_blocking)
@@ -90,9 +88,11 @@ def getSonar(clientID, hRobot):
 # --------------------------------------------------------------------------
 
 def startFuzzy():
+    ballDist = ctrl.Antecedent(np.arange(-1.0, 0.1, 0.01), 'ballDist')
     ballDesp=ctrl.Antecedent(np.arange(-1.0, 0.1, 0.1), 'ballDesp')
     turnL=ctrl.Consequent(np.arange(-1.0, 1.1, 0.1), 'turnL')
     turnR=ctrl.Consequent(np.arange(-1.0, 1.1, 0.1), 'turnR')
+    velocidad = ctrl.Consequent(np.arange(0, 2.0, 0.1), 'velocidad')
 
     ballDesp['left']=fuzz.trapmf(ballDesp.universe, [-1.0, -1.0, -0.8, -0.5])
     ballDesp['center']=fuzz.trimf(ballDesp.universe, [-0.65, -0.5, -0.35])
@@ -105,12 +105,43 @@ def startFuzzy():
     turnR['backward']=fuzz.trapmf(turnR.universe, [-1.0, -1.0, -0.8, 0.0])
     turnR['static']= fuzz.trimf(turnR.universe, [-0.2, 0.0, 0.1])
     turnR['forward']= fuzz.trapmf(turnR.universe, [0.0, 0.8, 1.0, 1.0])
+    
+    # Definir conjuntos distancia y velicidad
+    ballDist['close'] = fuzz.trapmf(ballDist.universe, [-1.0, -1.0, -0.8, -0.5])
+    ballDist['normal'] = fuzz.trimf(ballDist.universe, [-0.65, -0.5, -0.35])
+    ballDist['far'] = fuzz.trapmf(ballDist.universe, [-0.5, -0.2, 0.0, 0.0])
 
-    rule1= ctrl.Rule(ballDesp['right'], (turnR['forward'], turnL['static']))
-    rule2= ctrl.Rule(ballDesp['left'], (turnR['static'], turnL['forward']))
-    rule3= ctrl.Rule(ballDesp['center'], (turnR['forward'], turnL['forward']))
+    velocidad['slow'] = fuzz.trapmf(velocidad.universe, [0.0, 0.0, 0.5, 1.0])
+    velocidad['normal'] = fuzz.trimf(velocidad.universe, [0.5, 1.0, 1.5])
+    velocidad['fast'] = fuzz.trapmf(velocidad.universe, [1.0, 1.5, 2.0, 2.0])
 
-    turnCtrl= ctrl.ControlSystem([rule1, rule2, rule3])
+    #rule1= ctrl.Rule(ballDesp['right'], (turnR['forward'], turnL['static']))
+    #rule2= ctrl.Rule(ballDesp['left'], (turnR['static'], turnL['forward']))
+    #rule3= ctrl.Rule(ballDesp['center'], (turnR['forward'], turnL['forward']))
+
+    # Rules for ballDist
+    #rule4 = ctrl.Rule(ballDist['far'], (turnR['forward'], turnL['forward']))
+    #rule5 = ctrl.Rule(ballDist['normal'], (turnR['static'], turnL['static']))
+    #rule6 = ctrl.Rule(ballDist['close'], (turnR['backward'], turnL['backward']))
+
+    # Redifinir reglas
+
+    # Reglas movimiento caso lejos
+    rule1 = ctrl.Rule(ballDist['far'] & ballDesp['left'], (turnL['static'], turnR['forward'], velocidad['fast']))
+    rule2 = ctrl.Rule(ballDist['far'] & ballDesp['center'], (turnL['static'], turnR['static'], velocidad['fast']))
+    rule3 = ctrl.Rule(ballDist['far'] & ballDesp['right'], (turnL['forward'], turnR['static'], velocidad['fast']))
+
+    # Reglas movimiento caso normal
+    rule4 = ctrl.Rule(ballDist['normal'] & ballDesp['left'], (turnL['static'], turnR['forward'], velocidad['normal']))
+    rule5 = ctrl.Rule(ballDist['normal'] & ballDesp['center'], (turnL['static'], turnR['static'], velocidad['normal']))
+    rule6 = ctrl.Rule(ballDist['normal'] & ballDesp['right'], (turnL['forward'], turnR['static'], velocidad['normal']))
+
+    # Reglas movimiento caso cerca
+    rule7 = ctrl.Rule(ballDist['close'] & ballDesp['left'], (turnL['static'], turnR['forward'], velocidad['slow']))
+    rule8 = ctrl.Rule(ballDist['close'] & ballDesp['center'], (turnL['static'], turnR['static'], velocidad['slow']))
+    rule9 = ctrl.Rule(ballDist['close'] & ballDesp['right'], (turnL['forward'], turnR['static'], velocidad['slow']))
+
+    turnCtrl= ctrl.ControlSystem([rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8, rule9])
 
     turn= ctrl.ControlSystemSimulation(turnCtrl)
     return turn
@@ -119,6 +150,10 @@ def startFuzzy():
 # --------------------------------------------------------------------------
 
 def getImageBlob(clientID, hRobot):
+    area = 0
+    blobs = 0
+    coord = []
+
     rc,ds,pk = sim.simxReadVisionSensor(clientID, hRobot[2],
                                          sim.simx_opmode_buffer)
     rc1, res, image=sim.simxGetVisionSensorImage(clientID, hRobot[2],
@@ -126,7 +161,7 @@ def getImageBlob(clientID, hRobot):
 
     #image=np.reshape(np.array(image), res)
 
-    if(rc1 ==sim.simx_return_ok):
+    if rc == sim.simx_return_ok and pk[1][0]:
         image=np.asarray(image)%255
         image=np.uint8(np.reshape(image, (256, 256, 3)))
         imageG=cv.cvtColor(image, cv.COLOR_RGB2GRAY)
@@ -136,9 +171,6 @@ def getImageBlob(clientID, hRobot):
         cv.drawContours(image, contours, -1, (0, 100, 0), 3)
         cv.imshow('im', image)
         cv.waitKey(35)
-    blobs = 0
-    coord = []
-    if rc == sim.simx_return_ok and pk[1][0]:
         blobs = int(pk[1][0])
         offset = int(pk[1][1])
         for i in range(blobs):
@@ -165,15 +197,23 @@ def avoid(sonar):
 
 #-----------------------------------------------------------------------------
 
-def seguirBola(coord, turn):
-    lspeed, rspeed=0.8, 0
-    if(len(coord)>0):
+def seguirBola(coord, turn, area):
+    print(area)
+    lspeed, rspeed=0.4, -0.4
+    if(len(coord)>0 and area>0):
         turn.input['ballDesp']=-coord[0]
+        turn.input['ballDist']=-0.5 # <- cambiar por variable area
         turn.compute()
         out=turn.output
-        lspeed=out['turnL']
-        rspeed=out['turnR']
+
+        # He modificado las velocidades en función de la distancia a la bola
+        lspeed=out['turnL'] * out['velocidad']
+        rspeed=out['turnR'] * out['velocidad']
     return lspeed, rspeed
+
+
+
+
 
 #---------------------------------------------------------------------------
 
@@ -208,11 +248,11 @@ def main():
 
             # Planning
             ##lspeed, rspeed = avoid(sonar)
-            lspeed, rspeed = seguirBola(coord, turn)
+            lspeed, rspeed = seguirBola(coord, turn, area)
             print('lspeed: ', lspeed)
             print('rspeed: ', rspeed)
             # Action
-            setSpeed(clientID, hRobot, 0, 0)
+            setSpeed(clientID, hRobot, lspeed, rspeed)
             time.sleep(0.1)
 
         print('### Finishing...')
