@@ -89,14 +89,14 @@ def getSonar(clientID, hRobot):
 
 def startFuzzy():
     ballDist = ctrl.Antecedent(np.arange(0.0, 1.1, 0.001), 'ballDist')
-    ballDesp=ctrl.Antecedent(np.arange(-1.0, 0.1, 0.1), 'ballDesp')
+    ballDesp=ctrl.Antecedent(np.arange(0.0, 1.1, 0.1), 'ballDesp')
     turnL=ctrl.Consequent(np.arange(0.0, 1.1, 0.1), 'turnL')
     turnR=ctrl.Consequent(np.arange(0.0, 1.1, 0.1), 'turnR')
-    velocidad = ctrl.Consequent(np.arange(0, 2.0, 0.1), 'velocidad')
+    velocidad = ctrl.Consequent(np.arange(0, 4.0, 0.1), 'velocidad')
 
-    ballDesp['left']=fuzz.trapmf(ballDesp.universe, [-1.0, -1.0, -0.8, -0.5])
-    ballDesp['center']=fuzz.trimf(ballDesp.universe, [-0.65, -0.5, -0.35])
-    ballDesp['right']=fuzz.trapmf(ballDesp.universe, [-0.5, -0.2, 0.0, 0.0])
+    ballDesp['left']=fuzz.trapmf(ballDesp.universe, [0.0, 0.0, 0.2, 0.5])
+    ballDesp['center']=fuzz.trimf(ballDesp.universe, [0.35, 0.5, 0.65])
+    ballDesp['right']=fuzz.trapmf(ballDesp.universe, [0.5, 0.8, 1.0, 1.0])
 
     turnL['backward']=fuzz.trapmf(turnL.universe, [0.0, 0.0, 0.1, 0.5])
     turnL['static']= fuzz.trimf(turnL.universe, [0.4, 0.5, 0.6])
@@ -111,16 +111,16 @@ def startFuzzy():
     ballDist['normal'] = fuzz.trimf(ballDist.universe, [0.4, 0.5, 0.6])
     ballDist['close'] = fuzz.trapmf(ballDist.universe, [0.5, 0.9, 1.0, 1.0])
 
-    velocidad['slow'] = fuzz.trapmf(velocidad.universe, [0.0, 0.0, 0.5, 1.0])
-    velocidad['normal'] = fuzz.trimf(velocidad.universe, [0.5, 1.0, 1.5])
-    velocidad['fast'] = fuzz.trapmf(velocidad.universe, [1.0, 1.5, 2.0, 2.0])
+    velocidad['slow'] = fuzz.trapmf(velocidad.universe, [0.0, 0.0, 1, 2.0])
+    velocidad['normal'] = fuzz.trimf(velocidad.universe, [1, 2.0, 3])
+    velocidad['fast'] = fuzz.trapmf(velocidad.universe, [2.0, 3, 4.0, 4.0])
 
     # Redifinir reglas
 
     # Reglas movimiento caso lejos
-    rule1 = ctrl.Rule(ballDist['far'] & ballDesp['left'], (turnL['forward'], turnR['forward'], velocidad['fast']))
+    rule1 = ctrl.Rule(ballDist['far'] & ballDesp['left'], (turnL['backward'], turnR['forward'], velocidad['fast']))
     rule2 = ctrl.Rule(ballDist['far'] & ballDesp['center'], (turnL['forward'], turnR['forward'], velocidad['fast']))
-    rule3 = ctrl.Rule(ballDist['far'] & ballDesp['right'], (turnL['backward'], turnR['forward'], velocidad['fast']))
+    rule3 = ctrl.Rule(ballDist['far'] & ballDesp['right'], (turnL['forward'], turnR['backward'], velocidad['fast']))
 
     # Reglas movimiento caso normal
     rule4 = ctrl.Rule(ballDist['normal'] & ballDesp['left'], (turnL['backward'], turnR['forward'], velocidad['normal']))
@@ -198,18 +198,19 @@ def calcula_direccion_perdida(turn):
 
 def seguirBola(coord, turn, area):
     area = area/45000.0 # 
-    print(area)
+    print('Area after: ', area)
     lspeed, rspeed=calcula_direccion_perdida(turn) # Empieza a girar por donde perdió la bola por última vez
 
     if(len(coord)>0 and area>=0):
-        turn.input['ballDesp']=-coord[0]
-        turn.input['ballDist']= area 
+        turn.input['ballDesp'] = coord[0]
+        turn.input['ballDist'] = area 
         turn.compute()
         out=turn.output
 
         # He modificado las velocidades en función de la distancia a la bola
+        print('Velocidad: ', out['velocidad'])
         lspeed = out['velocidad'] * out['turnL']
-        rspeed=out['velocidad'] * out['turnR']
+        rspeed = out['velocidad'] * out['turnR']
     return lspeed, rspeed
 
 
