@@ -107,9 +107,10 @@ def startFuzzy():
     turnR['forward']= fuzz.trapmf(turnR.universe, [0.5, 0.9, 1.0, 1.0])
     
     # Definir conjuntos distancia y velicidad
-    ballDist['far'] = fuzz.trapmf(ballDist.universe, [0.0, 0.0, 0.1, 0.5])
-    ballDist['normal'] = fuzz.trimf(ballDist.universe, [0.4, 0.5, 0.6])
-    ballDist['close'] = fuzz.trapmf(ballDist.universe, [0.5, 0.9, 1.0, 1.0])
+
+    ballDist['far'] = fuzz.trapmf(ballDist.universe, [0.0, 0.0, 0.1, 0.4])
+    ballDist['normal'] = fuzz.trimf(ballDist.universe, [0.3, 0.4, 0.5])
+    ballDist['close'] = fuzz.trapmf(ballDist.universe, [0.4, 0.9, 1.0, 1.0])
 
     velocidad['slow'] = fuzz.trapmf(velocidad.universe, [0.0, 0.0, 1, 2.0])
     velocidad['normal'] = fuzz.trimf(velocidad.universe, [1, 2.0, 3])
@@ -197,8 +198,9 @@ def calcula_direccion_perdida(turn):
     return lspeed, rspeed
 
 def seguirBola(coord, turn, area):
+    print('Area before: ', area)
     area = area/45000.0 # 
-    print('Area after: ', area)
+    print('Area: ', area)
     lspeed, rspeed=calcula_direccion_perdida(turn) # Empieza a girar por donde perdió la bola por última vez
 
     if(len(coord)>0 and area>=0):
