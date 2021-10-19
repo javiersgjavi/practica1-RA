@@ -72,21 +72,6 @@ def getSonar(clientID, hRobot):
 
 # --------------------------------------------------------------------------
 
-# def getImage(clientID, hRobot):
-#     img = []
-#     err,r,i = sim.simxGetVisionSensorImage(clientID, hRobot[2], 0,
-#                                             sim.simx_opmode_buffer)
-
-#     if err == sim.simx_return_ok:
-#         img = np.array(i, dtype=np.uint8)
-#         img.resize([r[1],r[0],3])
-#         img = np.flipud(img)
-#         img = cv.cvtColor(img, cv.COLOR_RGB2BGR)
-
-#     return err, img
-
-# --------------------------------------------------------------------------
-
 def startFuzzy():
     ballDist = ctrl.Antecedent(np.arange(0.0, 1.1, 0.001), 'ballDist')
     ballDesp=ctrl.Antecedent(np.arange(0.0, 1.1, 0.1), 'ballDesp')
@@ -158,7 +143,6 @@ def getImageBlob(clientID, hRobot):
         contours, h=cv.findContours(imageG, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         area=cv.contourArea(contours[0])
         cv.drawContours(image, contours, -1, (0, 100, 0), 3)
-        cv.imshow('im', image)
         cv.waitKey(35)
         blobs = int(pk[1][0])
         offset = int(pk[1][1])
