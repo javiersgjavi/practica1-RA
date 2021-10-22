@@ -255,7 +255,7 @@ def main():
             print('lspeed: ', lspeed)
             print('rspeed: ', rspeed)
             # Action
-            setSpeed(clientID, hRobot, 0, 0)
+            setSpeed(clientID, hRobot, lspeed, rspeed)
             time.sleep(0.05)
 
         print('### Finishing...')
