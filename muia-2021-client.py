@@ -152,22 +152,6 @@ def getImageBlob(clientID, hRobot):
 
     return blobs, coord, area
 
-# --------------------------------------------------------------------------
-
-def avoid(sonar):
-    if (sonar[3] < 0.3) or (sonar[4] < 0.3):
-        lspeed, rspeed = +1, -1
-    elif sonar[1] < 0.2:
-        lspeed, rspeed = +1, -1
-    elif sonar[5] < 0.2:
-        lspeed, rspeed = -1, +1
-    else:
-        lspeed, rspeed = +2.0, +2.0
-
-    return lspeed, rspeed
-
-# --------------------------------------------------------------------------
-
 #-----------------------------------------------------------------------------
 
 def calcula_direccion_perdida(turn):
@@ -235,17 +219,16 @@ def main():
             print('coord: ', coord)
 
             # Planning
-            ##lspeed, rspeed = avoid(sonar)
             left=min(sonar[14], sonar[15], sonar[0], sonar[1])
             front=min(sonar[2], sonar[3], sonar[4], sonar[5])
             right=min(sonar[6], sonar[7], sonar[8], sonar[9])
             back=min(sonar[10], sonar[11], sonar[12], sonar[13])
 
-            if(front<0.1):
+            if(front<0.15):
                 lspeed, rspeed = -0.2, -0.2
-            elif(left<0.2):
+            elif(left<0.1):
                 lspeed, rspeed = 0.3, 0.0
-            elif(right<0.2):
+            elif(right<0.1):
                 lspeed, rspeed = 0.0, 0.3
             elif(back<0.1):
                 lspeed, rspeed = 0.05, 0.05
