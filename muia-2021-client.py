@@ -72,21 +72,6 @@ def getSonar(clientID, hRobot):
 
 # --------------------------------------------------------------------------
 
-# def getImage(clientID, hRobot):
-#     img = []
-#     err,r,i = sim.simxGetVisionSensorImage(clientID, hRobot[2], 0,
-#                                             sim.simx_opmode_buffer)
-
-#     if err == sim.simx_return_ok:
-#         img = np.array(i, dtype=np.uint8)
-#         img.resize([r[1],r[0],3])
-#         img = np.flipud(img)
-#         img = cv.cvtColor(img, cv.COLOR_RGB2BGR)
-
-#     return err, img
-
-# --------------------------------------------------------------------------
-
 def startFuzzy():
     ballDist = ctrl.Antecedent(np.arange(0.0, 1.1, 0.001), 'ballDist')
     ballDesp=ctrl.Antecedent(np.arange(0.0, 1.1, 0.1), 'ballDesp')
@@ -105,7 +90,7 @@ def startFuzzy():
     turnR['backward']=fuzz.trapmf(turnR.universe, [0.0, 0.0, 0.1, 0.5])
     turnR['static']= fuzz.trimf(turnR.universe, [0.4, 0.5, 0.6])
     turnR['forward']= fuzz.trapmf(turnR.universe, [0.5, 0.9, 1.0, 1.0])
-    
+
     # Definir conjuntos distancia y velicidad
 
     ballDist['far'] = fuzz.trapmf(ballDist.universe, [0.0, 0.0, 0.1, 0.4])
@@ -158,7 +143,6 @@ def getImageBlob(clientID, hRobot):
         contours, h=cv.findContours(imageG, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         area=cv.contourArea(contours[0])
         cv.drawContours(image, contours, -1, (0, 100, 0), 3)
-        cv.imshow('im', image)
         cv.waitKey(35)
         blobs = int(pk[1][0])
         offset = int(pk[1][1])
@@ -167,22 +151,6 @@ def getImageBlob(clientID, hRobot):
             coord.append(pk[1][5+offset*i])
 
     return blobs, coord, area
-
-# --------------------------------------------------------------------------
-
-def avoid(sonar):
-    if (sonar[3] < 0.3) or (sonar[4] < 0.3):
-        lspeed, rspeed = +1, -1
-    elif sonar[1] < 0.2:
-        lspeed, rspeed = +1, -1
-    elif sonar[5] < 0.2:
-        lspeed, rspeed = -1, +1
-    else:
-        lspeed, rspeed = +0.0, +0.0
-
-    return lspeed, rspeed
-
-# --------------------------------------------------------------------------
 
 #-----------------------------------------------------------------------------
 
@@ -199,13 +167,13 @@ def calcula_direccion_perdida(turn):
 
 def seguirBola(coord, turn, area):
     print('Area before: ', area)
-    area = area/45000.0 # 
+    area = area/45000.0 #
     print('Area: ', area)
     lspeed, rspeed=calcula_direccion_perdida(turn) # Empieza a girar por donde perdió la bola por última vez
 
     if(len(coord)>0 and area>=0):
         turn.input['ballDesp'] = coord[0]
-        turn.input['ballDist'] = area 
+        turn.input['ballDist'] = area
         turn.compute()
         out=turn.output
 
@@ -251,8 +219,22 @@ def main():
             print('coord: ', coord)
 
             # Planning
-            ##lspeed, rspeed = avoid(sonar)
-            lspeed, rspeed = seguirBola(coord, turn, area)
+            left=min(sonar[14], sonar[15], sonar[0], sonar[1])
+            front=min(sonar[2], sonar[3], sonar[4], sonar[5])
+            right=min(sonar[6], sonar[7], sonar[8], sonar[9])
+            back=min(sonar[10], sonar[11], sonar[12], sonar[13])
+
+            if(front<0.15):
+                lspeed, rspeed = -0.2, -0.2
+            elif(left<0.1):
+                lspeed, rspeed = 0.3, 0.0
+            elif(right<0.1):
+                lspeed, rspeed = 0.0, 0.3
+            elif(back<0.1):
+                lspeed, rspeed = 0.05, 0.05
+            else:
+                lspeed, rspeed = seguirBola(coord, turn, area)
+
             print('lspeed: ', lspeed)
             print('rspeed: ', rspeed)
             # Action

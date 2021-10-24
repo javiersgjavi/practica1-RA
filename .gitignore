@@ -1,5 +1,6 @@
 # Escena para evitar tener que cambiar el path
 muia-2021.ttt
+.vscode/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
