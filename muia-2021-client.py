@@ -228,7 +228,7 @@ def main():
                 lspeed, rspeed = -0.2, -0.2
             elif(left<0.1):
                 lspeed, rspeed = 0.3, 0.0
-            elif(right<0.15):
+            elif(right<0.1):
                 lspeed, rspeed = 0.0, 0.3
             elif(back<0.1):
                 lspeed, rspeed = 0.05, 0.05
